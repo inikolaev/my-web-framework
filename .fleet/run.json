@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "type": "python",
+            "name": "My Web Framework",
+            "arguments": ["my_web_framework/main.py"],
+        },
+
+    ]
+}
