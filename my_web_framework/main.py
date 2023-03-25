@@ -80,6 +80,7 @@ class Controller(BaseController):
     async def get_payment(self, id: str):
         return f"Hello {id}"
 
+    # For some reason this route overrides the route above when uncommented
     # @route("/payments", methods={"POST"})
     # @limit("2/minute")
     # async def post_payment(self):
@@ -91,7 +92,7 @@ class SomeAPI:
         self.__api = FastAPI(title=title, version=version, openapi_url="/.well-known/schema-discovery")
         self.__limiter = limiter
 
-    def mount(self, controller: BaseController, path: str):
+    def _create_route(self, controller: BaseController, path: str) -> APIRouter:
         # Some magic to mount a route and apply limiter to the route
         router = APIRouter()
 
@@ -105,6 +106,7 @@ class SomeAPI:
             if limits:
                 print(f"  Detected the following endpoint limits: {limits}")
 
+            # Instead of just limiter, we should be able to handle different annotations here
             if self.__limiter:
                 @functools.wraps(handler)
                 async def route_handler(*args, **kwargs):
@@ -117,6 +119,10 @@ class SomeAPI:
 
             router.add_api_route(path=endpoint.path, endpoint=route_handler, methods=endpoint.methods)
 
+        return router
+
+    def mount(self, controller: BaseController, path: str):
+        router = self._create_route(controller, path)
         self.__api.include_router(router, prefix=path)
 
     async def __call__(self, scope, receive, send) -> None:
