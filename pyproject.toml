@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "my-web-framework"
+version = "0.1.0"
+description = ""
+authors = ["Igor Nikolaev <igor.nikolaev@nikisoft.ru>"]
+readme = "README.md"
+packages = [{include = "my_web_framework"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.95.0"
+uvicorn = "^0.21.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
