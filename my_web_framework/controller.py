@@ -18,7 +18,9 @@ class EndpointAnnotation:
 
 
 class Endpoint:
-    def __init__(self, handler, path: str, methods: set[str], annotations: list[Annotation]):
+    def __init__(
+        self, handler, path: str, methods: set[str], annotations: list[Annotation]
+    ):
         self.handler = handler
         self.path = path
         self.methods = methods.copy()
@@ -40,17 +42,21 @@ def route(path: str, methods: set[str]):
 
 
 class ControllerMeta(type):
-    def __new__(cls: type[type], name: str, bases: tuple[type[Any]], attrs: dict[str, Any]) -> "ControllerMeta":
+    def __new__(
+        cls: type[type], name: str, bases: tuple[type[Any]], attrs: dict[str, Any]
+    ) -> "ControllerMeta":
         endpoints: list[Endpoint] = []
         for v in attrs.values():
             if inspect.isfunction(v) and hasattr(v, "_endpoint"):
                 endpoint: EndpointAnnotation = getattr(v, "_endpoint")
-                endpoints.append(Endpoint(
-                    handler=endpoint.handler,
-                    path=endpoint.path,
-                    methods=endpoint.methods,
-                    annotations=getattr(v, "_annotations", []),
-                ))
+                endpoints.append(
+                    Endpoint(
+                        handler=endpoint.handler,
+                        path=endpoint.path,
+                        methods=endpoint.methods,
+                        annotations=getattr(v, "_annotations", []),
+                    )
+                )
         attrs["_endpoints"] = endpoints
         return cast(ControllerMeta, type.__new__(cls, name, bases, attrs))
 

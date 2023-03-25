@@ -24,7 +24,9 @@ class Controller(BaseController):
     #     return "Hello"
 
 
-api = SomeAPI(title="Some API", version="2023", plugins=[RateLimiterPlugin(), AwesomePlugin()])
+api = SomeAPI(
+    title="Some API", version="2023", plugins=[RateLimiterPlugin(), AwesomePlugin()]
+)
 api.mount(Controller(), "")
 
 if __name__ == "__main__":

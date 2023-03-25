@@ -22,4 +22,5 @@ def awesome():
     def marker(f):
         add_annotation(f, AwesomeAnnotation())
         return f
+
     return marker

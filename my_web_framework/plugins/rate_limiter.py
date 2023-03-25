@@ -25,4 +25,5 @@ def limit(expression: str):
     def marker(f):
         add_annotation(f, LimitAnnotation(expression))
         return f
+
     return marker

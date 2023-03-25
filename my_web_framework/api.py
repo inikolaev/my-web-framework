@@ -8,12 +8,22 @@ from my_web_framework.plugins._base import Plugin
 
 class SomeAPI:
     def __init__(self, title: str, version: str, plugins: list[Plugin] = []):
-        self.__api = FastAPI(title=title, version=version, openapi_url="/.well-known/schema-discovery")
+        self.__api = FastAPI(
+            title=title, version=version, openapi_url="/.well-known/schema-discovery"
+        )
         self.__plugins = plugins.copy()
 
-    def _create_route(self, router: APIRouter, controller: BaseController, endpoint: Endpoint, path: str) -> None:
+    def _create_route(
+        self,
+        router: APIRouter,
+        controller: BaseController,
+        endpoint: Endpoint,
+        path: str,
+    ) -> None:
         handler = functools.partial(endpoint.handler, controller)
-        print(f"INFO:     Mounting controller endpoint at {endpoint.methods} {path}{endpoint.path}")
+        print(
+            f"INFO:     Mounting controller endpoint at {endpoint.methods} {path}{endpoint.path}"
+        )
         plugins: set[Plugin] = set()
 
         print(f"INFO:     Found the following annotations:")
@@ -26,7 +36,9 @@ class SomeAPI:
                     plugins.add(plugin)
 
             if not is_supported:
-                print(f"WARN:     No plugin available that supports annotation {annotation}")
+                print(
+                    f"WARN:     No plugin available that supports annotation {annotation}"
+                )
 
         if plugins:
             print(f"INFO:     The following plugins apply to the endpoint: {plugins}")
@@ -37,7 +49,9 @@ class SomeAPI:
                 plugin.do_something()
             return await handler(*args, **kwargs)
 
-        router.add_api_route(path=endpoint.path, endpoint=route_handler, methods=endpoint.methods)
+        router.add_api_route(
+            path=endpoint.path, endpoint=route_handler, methods=endpoint.methods
+        )
 
     def _create_router(self, controller: BaseController, path: str) -> APIRouter:
         # Some magic to mount a route and apply limiter to the route
