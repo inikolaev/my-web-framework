@@ -69,11 +69,6 @@ class AwesomeAnnotation(Annotation):
         return f"AwesomeAnnotation()"
 
 
-class Limiter:
-    def limit(self, limits: list[LimitAnnotation]):
-        print(f"Limiter is being called with the following limits: {limits}")
-
-
 def add_annotation(f, annotation: Annotation) -> None:
     annotations = getattr(f, "_annotations", [])
     annotations.append(annotation)
@@ -131,37 +126,52 @@ class Controller(BaseController):
     #     return "Hello"
 
 
+class Plugin:
+    def is_supported_annotation(self, annotation: Annotation) -> bool:
+        return False
+
+    def do_something(self):
+        print(f"Plugin is being called")
+
+
+class RateLimiterPlugin(Plugin):
+    def is_supported_annotation(self, annotation: Annotation) -> bool:
+        return isinstance(annotation, LimitAnnotation)
+
+    def do_something(self):
+        print(f"RateLimiterPlugin is being called")
+
+
 class SomeAPI:
-    def __init__(self, title: str, version: str, limiter: Optional[Limiter] = None):
+    def __init__(self, title: str, version: str, plugins: list[Plugin] = []):
         self.__api = FastAPI(title=title, version=version, openapi_url="/.well-known/schema-discovery")
-        self.__limiter = limiter
+        self.__plugins = plugins.copy()
 
     def _create_route(self, router: APIRouter, controller: BaseController, endpoint: Endpoint, path: str) -> None:
         handler = partial(endpoint.handler, controller)
-        print(f"Mounting controller endpoint at {endpoint.methods} {path}{endpoint.path}")
-        limits = []
+        print(f"INFO:     Mounting controller endpoint at {endpoint.methods} {path}{endpoint.path}")
+        plugins: set[Plugin] = set()
 
-        print(f"  Found the following annotations:")
+        print(f"INFO:     Found the following annotations:")
         for annotation in endpoint.annotations:
-            print(f"    {annotation}")
-            # For each annotation we should find a plugin that supports it
-            # and create a list of plugins that have to be called for the endpoint
-            if isinstance(annotation, LimitAnnotation):
-                limits.append(annotation)
+            print(f"INFO:     {annotation}")
+            is_supported = False
+            for plugin in self.__plugins:
+                if plugin.is_supported_annotation(annotation):
+                    is_supported = True
+                    plugins.add(plugin)
 
-        if limits:
-            print(f"  Detected the following endpoint limits: {limits}")
+            if not is_supported:
+                print(f"WARN:     No plugin available that supports annotation {annotation}")
 
-        # Instead of just limiter, we should be able to handle different annotations here
-        if self.__limiter:
-            @functools.wraps(handler)
-            async def route_handler(*args, **kwargs):
-                self.__limiter.limit(limits)
-                return await handler(*args, **kwargs)
-        else:
-            @functools.wraps(handler)
-            async def route_handler(*args, **kwargs):
-                return await handler(*args, **kwargs)
+        if plugins:
+            print(f"INFO:     The following plugins apply to the endpoint: {plugins}")
+
+        @functools.wraps(handler)
+        async def route_handler(*args, **kwargs):
+            for plugin in plugins:
+                plugin.do_something()
+            return await handler(*args, **kwargs)
 
         router.add_api_route(path=endpoint.path, endpoint=route_handler, methods=endpoint.methods)
 
@@ -169,7 +179,7 @@ class SomeAPI:
         # Some magic to mount a route and apply limiter to the route
         router = APIRouter()
 
-        print(f"Mounting controller at {path or '/'}")
+        print(f"INFO:     Mounting controller at {path or '/'}")
 
         for endpoint in controller.endpoints():
             self._create_route(router, controller, endpoint, path)
@@ -184,7 +194,7 @@ class SomeAPI:
         await self.__api(scope, receive, send)
 
 
-api = SomeAPI(title="Some API", version="2023", limiter=Limiter())
+api = SomeAPI(title="Some API", version="2023", plugins=[RateLimiterPlugin()])
 api.mount(Controller(), "")
 
 if __name__ == "__main__":
