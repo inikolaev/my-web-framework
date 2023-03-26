@@ -12,7 +12,7 @@ from my_web_framework.plugins.rate_limiter import limit, RateLimiterPlugin
 logger = logging.getLogger()
 
 
-def get_ip_address(request: Request, id: str, nme: str) -> str:
+def get_ip_address(request: Request, id: str) -> str:
     return f"{request.client.host}::{id}"
 
 
@@ -22,7 +22,7 @@ class Controller(BaseController):
     @limit("10/hour", key=get_ip_address)
     @limit("100/day", key=get_ip_address)
     @awesome()
-    async def get_payment(self, request: Request, id: str, value: Optional[str]):
+    async def get_payment(self, request: Request, id: str):
         logger.info("Hello world")
         return f"Hello {id} from {request.client.host}"
 
