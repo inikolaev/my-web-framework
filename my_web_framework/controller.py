@@ -1,10 +1,10 @@
 import inspect
 from typing import Any, cast
 
-from my_web_framework.annotations import Annotation
+from my_web_framework.annotations import Annotation, add_annotation
 
 
-class EndpointAnnotation:
+class EndpointAnnotation(Annotation):
     def __init__(self, handler, path: str, methods: set[str]):
         self.handler = handler
         self.path = path
@@ -35,7 +35,7 @@ class Endpoint:
 
 def route(path: str, methods: set[str]):
     def marker(f):
-        setattr(f, "_endpoint", EndpointAnnotation(f, path, methods))
+        add_annotation(f, EndpointAnnotation(f, path, methods))
         return f
 
     return marker
@@ -71,16 +71,19 @@ class ControllerMeta(type):
     ) -> "ControllerMeta":
         endpoints: list[Endpoint] = []
         for v in attrs.values():
-            if inspect.isfunction(v) and hasattr(v, "_endpoint"):
-                endpoint: EndpointAnnotation = getattr(v, "_endpoint")
-                endpoints.append(
-                    Endpoint(
-                        handler=endpoint.handler,
-                        path=endpoint.path,
-                        methods=endpoint.methods,
-                        annotations=getattr(v, "_annotations", []),
-                    )
-                )
+            if inspect.isfunction(v) and hasattr(v, "_annotations"):
+                annotations: list[Annotation] = getattr(v, "_annotations", [])
+
+                for annotation in annotations:
+                    if isinstance(annotation, EndpointAnnotation):
+                        endpoints.append(
+                            Endpoint(
+                                handler=annotation.handler,
+                                path=annotation.path,
+                                methods=annotation.methods,
+                                annotations=annotations,
+                            )
+                        )
         attrs["_endpoints"] = endpoints
         return cast(ControllerMeta, type.__new__(cls, name, bases, attrs))
 
