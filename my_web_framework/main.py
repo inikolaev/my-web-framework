@@ -13,6 +13,8 @@ logger = logging.getLogger()
 class Controller(BaseController):
     @route("/payments/{id}", methods={"GET"})
     @limit("1/minute")
+    @limit("10/hour")
+    @limit("100/day")
     @awesome()
     async def get_payment(self, id: str):
         return f"Hello {id}"

@@ -1,3 +1,7 @@
+from typing import Any
+
+from starlette.requests import Request
+
 from my_web_framework.annotations import Annotation, add_annotation
 from my_web_framework.plugins._base import Plugin
 
@@ -6,8 +10,8 @@ class RateLimiterPlugin(Plugin):
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, LimitAnnotation)
 
-    def do_something(self):
-        print(f"RateLimiterPlugin is being called")
+    def do_something(self, annotations: list[Annotation], request: Request, **kwargs: Any):
+        print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
 
 
 class LimitAnnotation(Annotation):

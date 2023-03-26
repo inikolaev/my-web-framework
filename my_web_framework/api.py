@@ -1,7 +1,11 @@
 import functools
+import inspect
+from collections import defaultdict
 
 from fastapi import APIRouter, FastAPI
+from starlette.requests import Request
 
+from my_web_framework.annotations import Annotation
 from my_web_framework.controller import BaseController, Endpoint
 from my_web_framework.plugins._base import Plugin
 
@@ -24,7 +28,7 @@ class SomeAPI:
         print(
             f"INFO:     Mounting controller endpoint at {endpoint.methods} {path}{endpoint.path}"
         )
-        plugins: set[Plugin] = set()
+        plugins: dict[Plugin, list[Annotation]] = defaultdict(list)
 
         print(f"INFO:     Found the following annotations:")
         for annotation in endpoint.annotations:
@@ -33,7 +37,7 @@ class SomeAPI:
             for plugin in self.__plugins:
                 if plugin.is_supported_annotation(annotation):
                     is_supported = True
-                    plugins.add(plugin)
+                    plugins[plugin].append(annotation)
 
             if not is_supported:
                 print(
@@ -44,10 +48,15 @@ class SomeAPI:
             print(f"INFO:     The following plugins apply to the endpoint: {plugins}")
 
         @functools.wraps(handler)
-        async def route_handler(*args, **kwargs):
-            for plugin in plugins:
-                plugin.do_something()
-            return await handler(*args, **kwargs)
+        async def route_handler(request: Request, **kwargs):
+            for plugin, annotations in plugins.items():
+                plugin.do_something(annotations, request, **kwargs)
+            return await handler(**kwargs)
+
+        # Update signature of the endpoint handler to include request object there
+        route_handler.__signature__ = inspect.signature(handler).replace(
+            parameters=(inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),) + tuple(inspect.signature(handler).parameters.values())
+        )
 
         router.add_api_route(
             path=endpoint.path, endpoint=route_handler, methods=endpoint.methods
