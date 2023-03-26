@@ -41,6 +41,30 @@ def route(path: str, methods: set[str]):
     return marker
 
 
+def get(path: str):
+    return route(path, methods={"GET"})
+
+
+def post(path: str):
+    return route(path, methods={"POST"})
+
+
+def put(path: str):
+    return route(path, methods={"PUT"})
+
+
+def patch(path: str):
+    return route(path, methods={"PATCH"})
+
+
+def delete(path: str):
+    return route(path, methods={"DELETE"})
+
+
+def option(path: str):
+    return route(path, methods={"OPTION"})
+
+
 class ControllerMeta(type):
     def __new__(
         cls: type[type], name: str, bases: tuple[type[Any]], attrs: dict[str, Any]
