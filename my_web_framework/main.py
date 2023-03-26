@@ -1,6 +1,8 @@
 import logging
+from typing import Optional
 
 import uvicorn
+from starlette.requests import Request
 
 from my_web_framework.api import SomeAPI
 from my_web_framework.controller import BaseController, get
@@ -10,15 +12,19 @@ from my_web_framework.plugins.rate_limiter import limit, RateLimiterPlugin
 logger = logging.getLogger()
 
 
+def get_ip_address(request: Request, id: str, nme: str) -> str:
+    return f"{request.client.host}::{id}"
+
+
 class Controller(BaseController):
     @get("/payments/{id}")
-    @limit("1/minute")
-    @limit("10/hour")
-    @limit("100/day")
+    @limit("1/minute", key=get_ip_address)
+    @limit("10/hour", key=get_ip_address)
+    @limit("100/day", key=get_ip_address)
     @awesome()
-    async def get_payment(self, id: str):
+    async def get_payment(self, request: Request, id: str, value: Optional[str]):
         logger.info("Hello world")
-        return f"Hello {id}"
+        return f"Hello {id} from {request.client.host}"
 
     # For some reason this route overrides the route above when uncommented
     # @route("/payments", methods={"POST"})

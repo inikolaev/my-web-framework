@@ -47,16 +47,29 @@ class SomeAPI:
         if plugins:
             print(f"INFO:     The following plugins apply to the endpoint: {plugins}")
 
+        # Check if endpoint handler declared request parameter
+        signature = inspect.signature(handler)
+        expects_request = "request" in signature.parameters
+
         @functools.wraps(handler)
         async def route_handler(request: Request, **kwargs):
             for plugin, annotations in plugins.items():
                 plugin.do_something(annotations, request, **kwargs)
-            return await handler(**kwargs)
 
-        # Update signature of the endpoint handler to include request object there
-        route_handler.__signature__ = inspect.signature(handler).replace(
-            parameters=(inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),) + tuple(inspect.signature(handler).parameters.values())
-        )
+            if expects_request:
+                # endpoint handler expects request parameter, we have to pass it explicitly here
+                return await handler(request=request, **kwargs)
+            else:
+                # otherwise pass declared parameters only
+                return await handler(**kwargs)
+
+        if not expects_request:
+            # We want to be able to access raw request from plugins,
+            # so we update signature of the endpoint handler to include
+            # request object there to convince FastAPI to pass request
+            route_handler.__signature__ = signature.replace(
+                parameters=(inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),) + tuple(signature.parameters.values())
+            )
 
         router.add_api_route(
             path=endpoint.path, endpoint=route_handler, methods=endpoint.methods
