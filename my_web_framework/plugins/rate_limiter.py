@@ -11,7 +11,9 @@ class RateLimiterPlugin(Plugin):
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, LimitAnnotation)
 
-    def do_something(self, annotations: list[Annotation], request: Request, **kwargs: Any):
+    def do_something(
+        self, annotations: list[Annotation], request: Request, **kwargs: Any
+    ):
         anns = cast(list[LimitAnnotation], annotations)
 
         all_kwargs = {
@@ -22,9 +24,13 @@ class RateLimiterPlugin(Plugin):
         for annotation in anns:
             parameters = all_kwargs.keys() & annotation.parameters()
             key_func = annotation.key()
-            key_func(**{
-                name: value for name, value in all_kwargs.items() if name in parameters
-            })
+            key_func(
+                **{
+                    name: value
+                    for name, value in all_kwargs.items()
+                    if name in parameters
+                }
+            )
 
         print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
 
@@ -50,12 +56,24 @@ class LimitAnnotation(Annotation):
 
 def limit(expression: str, key: Callable):
     def marker(method: Callable) -> Callable:
-        key_parameters = {name for name, value in inspect.signature(key).parameters.items() if name != "self"}
-        key_parameters_without_request = {name for name in key_parameters if name != "request"}
-        method_parameters = {name for name, value in inspect.signature(method).parameters.items() if name != "self"}
+        key_parameters = {
+            name
+            for name, value in inspect.signature(key).parameters.items()
+            if name != "self"
+        }
+        key_parameters_without_request = {
+            name for name in key_parameters if name != "request"
+        }
+        method_parameters = {
+            name
+            for name, value in inspect.signature(method).parameters.items()
+            if name != "self"
+        }
 
         if not key_parameters_without_request.issubset(method_parameters):
-            raise ValueError(f"Key function `{key.__qualname__}` expects parameters not present in handler `{method.__qualname__}`: {key_parameters_without_request.difference(method_parameters)}")
+            raise ValueError(
+                f"Key function `{key.__qualname__}` expects parameters not present in handler `{method.__qualname__}`: {key_parameters_without_request.difference(method_parameters)}"
+            )
 
         add_annotation(method, LimitAnnotation(expression, key, key_parameters))
         return method

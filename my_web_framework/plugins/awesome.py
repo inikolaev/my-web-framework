@@ -18,7 +18,9 @@ class AwesomePlugin(Plugin):
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, AwesomeAnnotation)
 
-    def do_something(self, annotations: list[Annotation], request: Request, **kwargs: Any):
+    def do_something(
+        self, annotations: list[Annotation], request: Request, **kwargs: Any
+    ):
         print(f"AwesomePlugin is being called: {annotations}, {request}, {kwargs}")
 
 

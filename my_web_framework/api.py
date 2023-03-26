@@ -68,7 +68,14 @@ class SomeAPI:
             # so we update signature of the endpoint handler to include
             # request object there to convince FastAPI to pass request
             route_handler.__signature__ = signature.replace(
-                parameters=(inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),) + tuple(signature.parameters.values())
+                parameters=(
+                    inspect.Parameter(
+                        "request",
+                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        annotation=Request,
+                    ),
+                )
+                + tuple(signature.parameters.values())
             )
 
         router.add_api_route(

@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import uvicorn
 from starlette.requests import Request
