@@ -4,15 +4,15 @@ import uvicorn
 from starlette.requests import Request
 
 from my_web_framework.api import SomeAPI
-from my_web_framework.controller import BaseController, get
+from my_web_framework.controller import BaseController, get, route
 from my_web_framework.plugins.awesome import awesome, AwesomePlugin
 from my_web_framework.plugins.rate_limiter import limit, RateLimiterPlugin
 
 logger = logging.getLogger()
 
 
-def get_ip_address(request: Request, id: str) -> str:
-    return f"{request.client.host}::{id}"
+def get_ip_address(request: Request) -> str:
+    return request.client.host
 
 
 def limit_by_ip_address(expression: str):
@@ -30,17 +30,22 @@ class Controller(BaseController):
         logger.info("Hello world")
         return f"Hello {id} from {request.client.host}"
 
-    # For some reason this route overrides the route above when uncommented
-    # @route("/payments", methods={"POST"})
-    # @limit("2/minute")
-    # async def post_payment(self):
-    #     return "Hello"
+    @route("/payments", methods={"POST"})
+    @limit_by_ip_address("2/minute")
+    async def post_payment(self):
+        return "Hello"
+
+
+def shutdown() -> None:
+    print("Shutting down")
 
 
 api = SomeAPI(
     title="Some API", version="2023", plugins=[RateLimiterPlugin(), AwesomePlugin()]
 )
-api.mount(Controller(), "")
+api.mount(Controller())
+api.on_shutdown(shutdown)
+
 
 if __name__ == "__main__":
     uvicorn.run(api, port=5000, log_level="debug")

@@ -1,6 +1,7 @@
 import functools
 import inspect
 from collections import defaultdict
+from typing import Callable
 
 from fastapi import APIRouter, FastAPI
 from starlette.requests import Request
@@ -93,9 +94,12 @@ class SomeAPI:
 
         return router
 
-    def mount(self, controller: BaseController, path: str):
+    def mount(self, controller: BaseController, path: str = ""):
         router = self._create_router(controller, path)
         self.__api.include_router(router, prefix=path)
+
+    def on_shutdown(self, callback: Callable[..., None]) -> None:
+        self.__api.add_event_handler("shutdown", callback)
 
     async def __call__(self, scope, receive, send) -> None:
         await self.__api(scope, receive, send)

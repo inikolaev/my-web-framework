@@ -7,39 +7,12 @@ from my_web_framework.annotations import Annotation, add_annotation
 from my_web_framework.plugins._base import Plugin
 
 
-class RateLimiterPlugin(Plugin):
-    def is_supported_annotation(self, annotation: Annotation) -> bool:
-        return isinstance(annotation, LimitAnnotation)
-
-    def do_something(
-        self, annotations: list[Annotation], request: Request, **kwargs: Any
-    ):
-        anns = cast(list[LimitAnnotation], annotations)
-
-        all_kwargs = {
-            "request": request,
-            **kwargs,
-        }
-
-        for annotation in anns:
-            parameters = all_kwargs.keys() & annotation.parameters()
-            key_func = annotation.key()
-            key_func(
-                **{
-                    name: value
-                    for name, value in all_kwargs.items()
-                    if name in parameters
-                }
-            )
-
-        print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
-
-
 class LimitAnnotation(Annotation):
     def __init__(self, expression: str, key: Callable, parameters: set[str]):
         self.__expression = expression
         self.__key = key
         self.__parameters = frozenset(parameters.copy())
+        self.__has_request_parameter = "request" in self.__parameters
 
     def __str__(self):
         return f"LimitAnnotation(expression={self.__expression}, parameters={self.__parameters})"
@@ -52,6 +25,36 @@ class LimitAnnotation(Annotation):
 
     def parameters(self) -> frozenset[str]:
         return self.__parameters
+
+    def has_request_parameter(self) -> bool:
+        return self.__has_request_parameter
+
+
+class RateLimiterPlugin(Plugin):
+    def is_supported_annotation(self, annotation: Annotation) -> bool:
+        return isinstance(annotation, LimitAnnotation)
+
+    def _evaluate_key_func(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> str:
+        kwargs = {name: value for name, value in kwargs.items() if name in annotation.parameters()}
+        key_func = annotation.key()
+
+        if annotation.has_request_parameter():
+            return key_func(request=request, **kwargs)
+        else:
+            return key_func(**kwargs)
+
+    def _evaluate_limit(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]):
+        self._evaluate_key_func(annotation, request, kwargs)
+
+    def do_something(
+        self, annotations: list[Annotation], request: Request, **kwargs: Any
+    ):
+        anns = cast(list[LimitAnnotation], annotations)
+
+        for annotation in anns:
+            self._evaluate_limit(annotation, request, kwargs)
+
+        print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
 
 
 def limit(expression: str, key: Callable):
