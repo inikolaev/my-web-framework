@@ -25,3 +25,34 @@ Support plugins that can extend the functionality of the framework. Currently, t
 ### Pluggable ASGI framework
 
 The framework does not implement ASGI, but instead relies on existing ASGI frameworks. Currently, there is an adapter available for FastAPI. However, the framework is designed to be extensible, and there is the potential for other adapters to be developed for other ASGI frameworks in the future.
+
+## Example
+
+### A simple controller
+
+```python
+import logging
+
+import uvicorn
+from starlette.requests import Request
+
+from my_web_framework.api import SomeAPI
+from my_web_framework.controller import BaseController, get
+
+logger = logging.getLogger()
+
+
+class NameController(BaseController):
+    @get("/payments/{id}")
+    async def get(self, request: Request, name: str):
+        logger.info("Hello world")
+        return f"Hello {id} from {request.client.host}"
+
+
+api = SomeAPI(title="Some API", version="2023")
+api.mount(NameController())
+
+
+if __name__ == "__main__":
+    uvicorn.run(api, port=5000, log_level="debug")
+```
