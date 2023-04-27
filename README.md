@@ -34,7 +34,6 @@ The framework does not implement ASGI, but instead relies on existing ASGI frame
 import logging
 
 import uvicorn
-from starlette.requests import Request
 
 from my_web_framework.api import SomeAPI
 from my_web_framework.controller import BaseController, get
@@ -44,9 +43,9 @@ logger = logging.getLogger()
 
 class NameController(BaseController):
     @get("/payments/{id}")
-    async def get(self, request: Request, name: str):
+    async def get(self, name: str):
         logger.info("Hello world")
-        return f"Hello {id} from {request.client.host}"
+        return f"Hello {name}!"
 
 
 api = SomeAPI(title="Some API", version="2023")
