@@ -26,7 +26,7 @@ Support plugins that can extend the functionality of the framework. Currently, t
 
 The framework does not implement ASGI, but instead relies on existing ASGI frameworks. Currently, there is an adapter available for FastAPI. However, the framework is designed to be extensible, and there is the potential for other adapters to be developed for other ASGI frameworks in the future.
 
-## Example
+## Examples
 
 ### A simple controller
 
@@ -51,7 +51,75 @@ class NameController(BaseController):
 api = SomeAPI(title="Some API", version="2023")
 api.mount(NameController())
 
+if __name__ == "__main__":
+    uvicorn.run(api, port=5000, log_level="debug")
+```
+
+### An example of using `limit` annotation
+
+```python
+import logging
+
+import uvicorn
+from starlette.requests import Request
+
+from my_web_framework.api import SomeAPI
+from my_web_framework.controller import BaseController, get
+from my_web_framework.plugins.rate_limiter import limit, RateLimiterPlugin
+
+logger = logging.getLogger()
+
+
+def get_ip_address(request: Request) -> str:
+    return request.client.host
+
+
+class NameController(BaseController):
+    @get("/payments/{id}")
+    @limit("1/minute", key=get_ip_address)
+    async def get(self, name: str):
+        logger.info("Hello world")
+        return f"Hello {name}!"
+
+
+api = SomeAPI(title="Some API", version="2023", plugins=[RateLimiterPlugin()])
+api.mount(NameController())
 
 if __name__ == "__main__":
     uvicorn.run(api, port=5000, log_level="debug")
 ```
+
+If we want to apply limits based on passed `name` parameter, we can pass it to the key function:
+
+```python
+import logging
+
+import uvicorn
+
+from my_web_framework.api import SomeAPI
+from my_web_framework.controller import BaseController, get
+from my_web_framework.plugins.rate_limiter import limit, RateLimiterPlugin
+
+logger = logging.getLogger()
+
+
+def get_name(name: str) -> str:
+    return name
+
+
+class NameController(BaseController):
+    @get("/payments/{id}")
+    @limit("1/minute", key=get_name)
+    async def get(self, name: str):
+        logger.info("Hello world")
+        return f"Hello {name}!"
+
+
+api = SomeAPI(title="Some API", version="2023", plugins=[RateLimiterPlugin()])
+api.mount(NameController())
+
+if __name__ == "__main__":
+    uvicorn.run(api, port=5000, log_level="debug")
+```
+
+This allows us to parse request only once and pass any subset of the parameters defined on the handler to the key function. 
