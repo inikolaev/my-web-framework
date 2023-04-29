@@ -42,7 +42,7 @@ logger = logging.getLogger()
 
 
 class NameController(BaseController):
-    @get("/payments/{id}")
+    @get("/names/{name}")
     async def get(self, name: str):
         logger.info("Hello world")
         return f"Hello {name}!"
@@ -75,7 +75,7 @@ def get_ip_address(request: Request) -> str:
 
 
 class NameController(BaseController):
-    @get("/payments/{id}")
+    @get("/names/{name}")
     @limit("1/minute", key=get_ip_address)
     async def get(self, name: str):
         logger.info("Hello world")
@@ -108,7 +108,7 @@ def get_name(name: str) -> str:
 
 
 class NameController(BaseController):
-    @get("/payments/{id}")
+    @get("/names/{name}")
     @limit("1/minute", key=get_name)
     async def get(self, name: str):
         logger.info("Hello world")
@@ -148,7 +148,7 @@ def limit_by_ip_address(expression: str):
 
 
 class NameController(BaseController):
-    @get("/payments/{id}")
+   @get("/names/{name}")
     @limit_by_ip_address("1/minute")
     async def get(self, name: str):
         logger.info("Hello world")
