@@ -21,18 +21,18 @@ def limit_by_ip_address(expression: str):
 
 
 class Controller(BaseController):
-    @get("/payments/{id}")
+    @get("/names/{name}")
     @limit("1/minute", key=get_ip_address)
     @limit("10/hour", key=get_ip_address)
     @limit_by_ip_address("100/day")
     @awesome()
-    async def get_payment(self, request: Request, id: str):
+    async def get_name(self, request: Request, name: str):
         logger.info("Hello world")
-        return f"Hello {id} from {request.client.host}"
+        return f"Hello {name} from {request.client.host}"
 
-    @route("/payments", methods={"POST"})
+    @route("/names", methods={"POST"})
     @limit_by_ip_address("2/minute")
-    async def post_payment(self):
+    async def post_names(self):
         return "Hello"
 
 

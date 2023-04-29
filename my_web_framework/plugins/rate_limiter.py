@@ -1,15 +1,20 @@
 import inspect
+import json
 from typing import Any, Callable, cast
 
+from limits import parse, RateLimitItem
+from limits.aio import storage, strategies
 from starlette.requests import Request
 
 from my_web_framework.annotations import Annotation, add_annotation
+from my_web_framework.exceptions import HttpException
 from my_web_framework.plugins._base import Plugin
 
 
 class LimitAnnotation(Annotation):
     def __init__(self, expression: str, key: Callable, parameters: set[str]):
         self.__expression = expression
+        self.__limit = parse(expression)
         self.__key = key
         self.__parameters = frozenset(parameters.copy())
         self.__has_request_parameter = "request" in self.__parameters
@@ -29,8 +34,29 @@ class LimitAnnotation(Annotation):
     def has_request_parameter(self) -> bool:
         return self.__has_request_parameter
 
+    def limit(self) -> RateLimitItem:
+        return self.__limit
+
+
+class RateLimitExceededException(HttpException):
+    def __init__(self):
+        super().__init__(
+            status_code=429,
+            headers={"Content-Type": "application/problem+json"},
+            content=json.dumps({
+                "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
+                "title": "Too many requests",
+                "status": 429,
+                "detail": "Rate-limit policy exceeded",
+            }),
+        )
+
 
 class RateLimiterPlugin(Plugin):
+    def __init__(self) -> None:
+        self.__storage = storage.MemoryStorage()
+        self.__rate_limiter = strategies.MovingWindowRateLimiter(self.__storage)
+
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, LimitAnnotation)
 
@@ -43,16 +69,18 @@ class RateLimiterPlugin(Plugin):
         else:
             return key_func(**kwargs)
 
-    def _evaluate_limit(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]):
-        self._evaluate_key_func(annotation, request, kwargs)
+    async def _evaluate_limit(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]):
+        key = self._evaluate_key_func(annotation, request, kwargs)
+        if not await self.__rate_limiter.hit(annotation.limit(), key):
+            raise RateLimitExceededException()
 
-    def do_something(
+    async def do_something(
         self, annotations: list[Annotation], request: Request, **kwargs: Any
     ):
         anns = cast(list[LimitAnnotation], annotations)
 
         for annotation in anns:
-            self._evaluate_limit(annotation, request, kwargs)
+            await self._evaluate_limit(annotation, request, kwargs)
 
         print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
 

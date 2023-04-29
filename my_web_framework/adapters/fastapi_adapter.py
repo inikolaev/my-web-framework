@@ -4,10 +4,12 @@ from typing import Callable, Mapping
 
 from fastapi import APIRouter, FastAPI
 from starlette.requests import Request
+from starlette.responses import Response
 
 from my_web_framework.adapters.base_adapter import BaseAdapter
 from my_web_framework.annotations import Annotation
 from my_web_framework.controller import BaseController, Endpoint
+from my_web_framework.exceptions import HttpException
 from my_web_framework.plugins._base import Plugin
 
 
@@ -24,15 +26,22 @@ class FastAPIAdapter(BaseAdapter):
 
         @functools.wraps(handler)
         async def route_handler(request: Request, **kwargs):
-            for plugin, annotations in plugins.items():
-                plugin.do_something(annotations, request, **kwargs)
+            try:
+                for plugin, annotations in plugins.items():
+                    await plugin.do_something(annotations, request, **kwargs)
 
-            if expects_request:
-                # endpoint handler expects request parameter, we have to pass it explicitly here
-                return await handler(request=request, **kwargs)
-            else:
-                # otherwise pass declared parameters only
-                return await handler(**kwargs)
+                if expects_request:
+                    # endpoint handler expects request parameter, we have to pass it explicitly here
+                    return await handler(request=request, **kwargs)
+                else:
+                    # otherwise pass declared parameters only
+                    return await handler(**kwargs)
+            except HttpException as e:
+                return Response(
+                    status_code=e.status_code,
+                    headers=e.headers,
+                    content=e.content,
+                )
 
         if not expects_request:
             # We want to be able to access raw request from plugins,
