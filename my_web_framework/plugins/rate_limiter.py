@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import json
 import time
@@ -46,6 +47,7 @@ class RateLimitExceededException(HttpException):
             headers={
                 "Content-Type": "application/problem+json",
                 "Retry-After": str(reset_time),
+                # https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/
                 "RateLimit-Limit": str(limit),
                 "RateLimit-Policy": policy,
                 "RateLimit-Reset": str(reset_time),
@@ -76,38 +78,38 @@ class RateLimiterPlugin(Plugin):
         else:
             return key_func(**kwargs)
 
-    async def _evaluate_limit(self, limit: RateLimitItem, key: str) -> bool:
-        return await self.__rate_limiter.hit(limit, key)
+    async def _evaluate_limit(self, limit: RateLimitItem, key: str) -> tuple[RateLimitItem, str, bool]:
+        return limit, key, await self.__rate_limiter.hit(limit, key)
 
-    async def _evaluate_limits(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> tuple[RateLimitItem, str, bool]:
+    def _collect_limits(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> tuple[RateLimitItem, str]:
         key = self._evaluate_key_func(annotation, request, kwargs)
-
-        return [
-    (limit, key, await self._evaluate_limit(limit, key))
-    for limit in annotation.limits()
-    ]
+        return [(limit, key) for limit in annotation.limits()]
 
     async def do_something(
             self, annotations: list[Annotation], request: Request, **kwargs: Any
     ):
         anns = cast(list[LimitAnnotation], annotations)
 
-        results = []
-        for annotation in anns:
-            results.extend(await self._evaluate_limits(annotation, request, kwargs))
-
+        limits = []
         policies = []
+        for annotation in anns:
+            limits.extend(self._collect_limits(annotation, request, kwargs))
+            policies.append(f"{limit.amount};w={limit.get_expiry()}")
+
+        policy = ", ".join(policies)
+
+        # Check all rate limits concurrently
+        results = await asyncio.gather(*[self._evaluate_limit(limit, key) for limit, key in limits])
+
         failed_rate_limit = None
         failed_rate_limit_stats = None
 
+        # Check rate limiting results
         for limit, key, result in results:
-            policies.append(f"{limit.amount};w={limit.get_expiry()}")
             if not result and not failed_rate_limit:
                 stats = await self.__rate_limiter.get_window_stats(limit, key)
                 failed_rate_limit = limit
                 failed_rate_limit_stats = stats
-
-        policy = ", ".join(policies)
 
         if failed_rate_limit:
             reset_time = int(failed_rate_limit_stats.reset_time - time.time()) + 1
