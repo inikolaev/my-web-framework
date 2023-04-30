@@ -1,5 +1,6 @@
 import inspect
 import json
+import time
 from typing import Any, Callable, cast
 
 from limits import parse, RateLimitItem
@@ -39,10 +40,13 @@ class LimitAnnotation(Annotation):
 
 
 class RateLimitExceededException(HttpException):
-    def __init__(self):
+    def __init__(self, reset_time: int, remaining_time: int):
         super().__init__(
             status_code=429,
-            headers={"Content-Type": "application/problem+json"},
+            headers={
+                "Content-Type": "application/problem+json",
+                "Retry-After": str(remaining_time),
+            },
             content=json.dumps({
                 "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
                 "title": "Too many requests",
@@ -72,7 +76,9 @@ class RateLimiterPlugin(Plugin):
     async def _evaluate_limit(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]):
         key = self._evaluate_key_func(annotation, request, kwargs)
         if not await self.__rate_limiter.hit(annotation.limit(), key):
-            raise RateLimitExceededException()
+            stats = await self.__rate_limiter.get_window_stats(annotation.limit(), key)
+            remaining_time = int(stats.reset_time - time.time()) + 1
+            raise RateLimitExceededException(reset_time=stats.reset_time, remaining_time=remaining_time)
 
     async def do_something(
         self, annotations: list[Annotation], request: Request, **kwargs: Any
