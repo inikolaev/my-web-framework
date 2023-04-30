@@ -90,13 +90,13 @@ class RateLimiterPlugin(Plugin):
     ):
         anns = cast(list[LimitAnnotation], annotations)
 
+        # Collect all rate limits
         limits = []
-        policies = []
         for annotation in anns:
             limits.extend(self._collect_limits(annotation, request, kwargs))
-            policies.append(f"{limit.amount};w={limit.get_expiry()}")
 
-        policy = ", ".join(policies)
+        # Collect rate limit policy
+        policy = ", ".join([f"{limit.amount};w={limit.get_expiry()}" for limit, _ in limits])
 
         # Check all rate limits concurrently
         results = await asyncio.gather(*[self._evaluate_limit(limit, key) for limit, key in limits])
