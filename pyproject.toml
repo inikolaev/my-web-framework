@@ -10,6 +10,7 @@ packages = [{include = "my_web_framework"}]
 python = "^3.11"
 fastapi = "^0.95.0"
 uvicorn = "^0.21.1"
+limits = "^3.4.0"
 
 
 [tool.poetry.group.dev.dependencies]
