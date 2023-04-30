@@ -20,7 +20,7 @@ def limit_by_ip_address(expression: str):
 
 class NameController(BaseController):
     @get("/names/{name}")
-    @limit_by_ip_address("1/minute")
+    @limit_by_ip_address("2/second,10/hour")
     async def get(self, name: str):
         logger.info("Hello world")
         return f"Hello {name}!"

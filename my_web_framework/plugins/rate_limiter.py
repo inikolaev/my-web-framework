@@ -40,12 +40,15 @@ class LimitAnnotation(Annotation):
 
 
 class RateLimitExceededException(HttpException):
-    def __init__(self, reset_time: int, remaining_time: int):
+    def __init__(self, reset_time: int, limit: int, policy: str):
         super().__init__(
             status_code=429,
             headers={
                 "Content-Type": "application/problem+json",
-                "Retry-After": str(remaining_time),
+                "Retry-After": str(reset_time),
+                "RateLimit-Limit": str(limit),
+                "RateLimit-Policy": policy,
+                "RateLimit-Reset": str(reset_time),
             },
             content=json.dumps({
                 "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
@@ -73,21 +76,46 @@ class RateLimiterPlugin(Plugin):
         else:
             return key_func(**kwargs)
 
-    async def _evaluate_limit(self, annotation: LimitAnnotation, limit: RateLimitItem, request: Request, kwargs: dict[str, Any]):
+    async def _evaluate_limit(self, limit: RateLimitItem, key: str) -> bool:
+        return await self.__rate_limiter.hit(limit, key)
+
+    async def _evaluate_limits(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> tuple[RateLimitItem, str, bool]:
         key = self._evaluate_key_func(annotation, request, kwargs)
-        if not await self.__rate_limiter.hit(limit, key):
-            stats = await self.__rate_limiter.get_window_stats(limit, key)
-            remaining_time = int(stats.reset_time - time.time()) + 1
-            raise RateLimitExceededException(reset_time=stats.reset_time, remaining_time=remaining_time)
+
+        return [
+    (limit, key, await self._evaluate_limit(limit, key))
+    for limit in annotation.limits()
+    ]
 
     async def do_something(
-        self, annotations: list[Annotation], request: Request, **kwargs: Any
+            self, annotations: list[Annotation], request: Request, **kwargs: Any
     ):
         anns = cast(list[LimitAnnotation], annotations)
 
+        results = []
         for annotation in anns:
-            for limit in annotation.limits():
-                await self._evaluate_limit(annotation, limit, request, kwargs)
+            results.extend(await self._evaluate_limits(annotation, request, kwargs))
+
+        policies = []
+        failed_rate_limit = None
+        failed_rate_limit_stats = None
+
+        for limit, key, result in results:
+            policies.append(f"{limit.amount};w={limit.get_expiry()}")
+            if not result and not failed_rate_limit:
+                stats = await self.__rate_limiter.get_window_stats(limit, key)
+                failed_rate_limit = limit
+                failed_rate_limit_stats = stats
+
+        policy = ", ".join(policies)
+
+        if failed_rate_limit:
+            reset_time = int(failed_rate_limit_stats.reset_time - time.time()) + 1
+            raise RateLimitExceededException(
+                reset_time=reset_time,
+                limit=failed_rate_limit.amount,
+                policy=policy,
+            )
 
         print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
 
