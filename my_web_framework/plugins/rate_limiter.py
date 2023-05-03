@@ -6,6 +6,7 @@ from typing import Any, Callable, cast
 
 from limits import parse_many, RateLimitItem
 from limits.aio import storage, strategies
+from limits.storage import storage_from_string
 from starlette.requests import Request
 
 from my_web_framework.annotations import Annotation, add_annotation
@@ -61,9 +62,16 @@ class RateLimitExceededException(HttpException):
         )
 
 
+class UnsupportedRateLimiterStorage(Exception):
+    pass
+
+
 class RateLimiterPlugin(Plugin):
-    def __init__(self) -> None:
-        self.__storage = storage.MemoryStorage()
+    def __init__(self, storage_uri: str = "async+memory://") -> None:
+        if not storage_uri.startswith("async+"):
+            raise UnsupportedRateLimiterStorage("Only async rate limiter storages are supported")
+
+        self.__storage = storage_from_string(storage_uri)
         self.__rate_limiter = strategies.MovingWindowRateLimiter(self.__storage)
 
     def is_supported_annotation(self, annotation: Annotation) -> bool:
