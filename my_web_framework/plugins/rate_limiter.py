@@ -6,6 +6,7 @@ from typing import Any, Callable, cast
 
 from limits import parse_many, RateLimitItem
 from limits.aio import storage, strategies
+from limits.aio.strategies import RateLimiter
 from limits.storage import storage_from_string
 from starlette.requests import Request
 
@@ -74,6 +75,9 @@ class RateLimiterPlugin(Plugin):
         self.__storage = storage_from_string(storage_uri)
         self.__rate_limiter = strategies.MovingWindowRateLimiter(self.__storage)
 
+        self.__fallback_storage = storage.MemoryStorage()
+        self.__fallback_rate_limiter = strategies.MovingWindowRateLimiter(self.__fallback_storage)
+
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, LimitAnnotation)
 
@@ -87,11 +91,20 @@ class RateLimiterPlugin(Plugin):
             return key_func(**kwargs)
 
     async def _evaluate_limit(self, limit: RateLimitItem, key: str) -> tuple[RateLimitItem, str, bool]:
-        return limit, key, await self.__rate_limiter.hit(limit, key)
+        return limit, key, await self._limiter.hit(limit, key)
 
     def _collect_limits(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> tuple[RateLimitItem, str]:
         key = self._evaluate_key_func(annotation, request, kwargs)
         return [(limit, key) for limit in annotation.limits()]
+
+    @property
+    def _limiter(self) -> RateLimiter:
+        # Check if storage is healthy and use fallback storage otherwise
+        # TODO: we should not check storage health on each limit check
+        if self.__storage.check():
+            return self.__rate_limiter
+
+        return self.__fallback_rate_limiter
 
     async def do_something(
             self, annotations: list[Annotation], request: Request, **kwargs: Any
@@ -115,7 +128,7 @@ class RateLimiterPlugin(Plugin):
         # Check rate limiting results
         for limit, key, result in results:
             if not result and not failed_rate_limit:
-                stats = await self.__rate_limiter.get_window_stats(limit, key)
+                stats = await self._limiter.get_window_stats(limit, key)
                 failed_rate_limit = limit
                 failed_rate_limit_stats = stats
 
