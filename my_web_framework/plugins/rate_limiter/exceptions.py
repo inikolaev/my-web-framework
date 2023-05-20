@@ -3,7 +3,7 @@ import json
 from my_web_framework.exceptions import HttpException
 
 
-class RateLimitExceededException(HttpException):
+class RateLimitExceededError(HttpException):
     def __init__(self, reset_time: int, limit: int, policy: str) -> None:
         super().__init__(
             status_code=429,
@@ -28,5 +28,5 @@ class RateLimitExceededException(HttpException):
         )
 
 
-class UnsupportedRateLimiterStorage(Exception):
+class UnsupportedRateLimiterStorageError(Exception):
     pass

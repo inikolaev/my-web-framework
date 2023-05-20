@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 import uvicorn
 from starlette.requests import Request
@@ -15,7 +16,7 @@ def get_ip_address(request: Request) -> str:
     return request.client.host
 
 
-def limit_by_ip_address(expression: str):
+def limit_by_ip_address(expression: str) -> Callable:
     """We can define custome annotations for easier reuse."""
     return limit(expression, key=get_ip_address)
 
@@ -37,7 +38,7 @@ class Controller(BaseController):
 
 
 def shutdown() -> None:
-    print("Shutting down")
+    logger.info("Shutting down")
 
 
 api = SomeAPI(

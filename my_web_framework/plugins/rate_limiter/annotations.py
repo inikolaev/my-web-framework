@@ -16,15 +16,15 @@ class _LimitAnnotation(Annotation):
 
     def __str__(self) -> str:
         return (
-    f"LimitAnnotation(expression={self.__expression},"
-    f" parameters={self.__parameters})"
-    )
+            f"LimitAnnotation(expression={self.__expression},"
+            f" parameters={self.__parameters})"
+        )
 
     def __repr__(self) -> str:
         return (
-    f"LimitAnnotation(expression={self.__expression},"
-    f" parameters={self.__parameters})"
-    )
+            f"LimitAnnotation(expression={self.__expression},"
+            f" parameters={self.__parameters})"
+        )
 
     def key(self) -> Callable:
         return self.__key
@@ -39,7 +39,7 @@ class _LimitAnnotation(Annotation):
         return self.__limits
 
 
-def limit(expression: str, key: Callable):
+def limit(expression: str, key: Callable) -> Callable:
     def marker(method: Callable) -> Callable:
         key_parameters = {
             name
@@ -56,7 +56,7 @@ def limit(expression: str, key: Callable):
         }
 
         if not key_parameters_without_request.issubset(method_parameters):
-            msg = f"Key function `{key.__qualname__}`expects parameters not present in handler `{{method.__qualname__}}`:{{key_parameters_without_request.difference(method_parameters)}}"
+            msg = f"Key function `{key.__qualname__}` expects parameters not present in handler `{method.__qualname__}`:{key_parameters_without_request.difference(method_parameters)}"
             raise ValueError(
         msg,
         )

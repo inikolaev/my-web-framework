@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from typing import Any, cast
 
@@ -11,14 +12,16 @@ from starlette.requests import Request
 from my_web_framework.annotations import Annotation
 from my_web_framework.plugins._base import Plugin
 from my_web_framework.plugins.rate_limiter.annotations import _LimitAnnotation
-from my_web_framework.plugins.rate_limiter.exceptions import RateLimitExceededException, UnsupportedRateLimiterStorage
+from my_web_framework.plugins.rate_limiter.exceptions import RateLimitExceededError, UnsupportedRateLimiterStorageError
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimiterPlugin(Plugin):
     def __init__(self, storage_uri: str = "async+memory://") -> None:
         if not storage_uri.startswith("async+"):
             msg = "Only async rate limiter storages are supported"
-            raise UnsupportedRateLimiterStorage(
+            raise UnsupportedRateLimiterStorageError(
         msg,
         )
 
@@ -45,8 +48,8 @@ class RateLimiterPlugin(Plugin):
 
         if annotation.has_request_parameter():
             return key_func(request=request, **kwargs)
-        else:
-            return key_func(**kwargs)
+
+        return key_func(**kwargs)
 
     async def _evaluate_limit(
             self, limit: RateLimitItem, key: str,
@@ -69,8 +72,8 @@ class RateLimiterPlugin(Plugin):
         return self.__fallback_rate_limiter
 
     async def do_something(
-            self, annotations: list[Annotation], request: Request, **kwargs: Any,
-    ):
+            self, annotations: list[Annotation], request: Request, **kwargs: Any,  # noqa: ANN401
+    ) -> None:
         anns = cast(list[_LimitAnnotation], annotations)
 
         # Collect all rate limits
@@ -100,10 +103,10 @@ class RateLimiterPlugin(Plugin):
 
         if failed_rate_limit:
             reset_time = int(failed_rate_limit_stats.reset_time - time.time()) + 1
-            raise RateLimitExceededException(
+            raise RateLimitExceededError(
                 reset_time=reset_time,
                 limit=failed_rate_limit.amount,
                 policy=policy,
             )
 
-        print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
+        logger.info("RateLimiterPlugin is being called: %s, %s, %s", annotations, request, kwargs)
