@@ -27,10 +27,16 @@ class Endpoint:
         self.annotations = annotations.copy()
 
     def __str__(self):
-        return f"Endpoint(path={self.path},methods={self.methods}, annotations={self.annotations})"
+        return (
+            f"Endpoint(path={self.path},methods={self.methods},"
+            f" annotations={self.annotations})"
+        )
 
     def __repr__(self):
-        return f"Endpoint(path={self.path},methods={self.methods}, annotations={self.annotations})"
+        return (
+            f"Endpoint(path={self.path},methods={self.methods},"
+            f" annotations={self.annotations})"
+        )
 
 
 def route(path: str, methods: set[str]):

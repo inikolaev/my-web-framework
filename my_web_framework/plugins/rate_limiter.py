@@ -24,10 +24,16 @@ class LimitAnnotation(Annotation):
         self.__has_request_parameter = "request" in self.__parameters
 
     def __str__(self):
-        return f"LimitAnnotation(expression={self.__expression}, parameters={self.__parameters})"
+        return (
+            f"LimitAnnotation(expression={self.__expression},"
+            f" parameters={self.__parameters})"
+        )
 
     def __repr__(self):
-        return f"LimitAnnotation(expression={self.__expression}, parameters={self.__parameters})"
+        return (
+            f"LimitAnnotation(expression={self.__expression},"
+            f" parameters={self.__parameters})"
+        )
 
     def key(self) -> Callable:
         return self.__key
@@ -54,12 +60,16 @@ class RateLimitExceededException(HttpException):
                 "RateLimit-Policy": policy,
                 "RateLimit-Reset": str(reset_time),
             },
-            content=json.dumps({
-                "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
-                "title": "Too many requests",
-                "status": 429,
-                "detail": "Rate-limit policy exceeded",
-            }),
+            content=json.dumps(
+                {
+                    "type": (
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+                    ),
+                    "title": "Too many requests",
+                    "status": 429,
+                    "detail": "Rate-limit policy exceeded",
+                }
+            ),
         )
 
 
@@ -70,19 +80,29 @@ class UnsupportedRateLimiterStorage(Exception):
 class RateLimiterPlugin(Plugin):
     def __init__(self, storage_uri: str = "async+memory://") -> None:
         if not storage_uri.startswith("async+"):
-            raise UnsupportedRateLimiterStorage("Only async rate limiter storages are supported")
+            raise UnsupportedRateLimiterStorage(
+                "Only async rate limiter storages are supported"
+            )
 
         self.__storage = storage_from_string(storage_uri)
         self.__rate_limiter = strategies.MovingWindowRateLimiter(self.__storage)
 
         self.__fallback_storage = storage.MemoryStorage()
-        self.__fallback_rate_limiter = strategies.MovingWindowRateLimiter(self.__fallback_storage)
+        self.__fallback_rate_limiter = strategies.MovingWindowRateLimiter(
+            self.__fallback_storage
+        )
 
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, LimitAnnotation)
 
-    def _evaluate_key_func(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> str:
-        kwargs = {name: value for name, value in kwargs.items() if name in annotation.parameters()}
+    def _evaluate_key_func(
+        self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]
+    ) -> str:
+        kwargs = {
+            name: value
+            for name, value in kwargs.items()
+            if name in annotation.parameters()
+        }
         key_func = annotation.key()
 
         if annotation.has_request_parameter():
@@ -90,10 +110,14 @@ class RateLimiterPlugin(Plugin):
         else:
             return key_func(**kwargs)
 
-    async def _evaluate_limit(self, limit: RateLimitItem, key: str) -> tuple[RateLimitItem, str, bool]:
+    async def _evaluate_limit(
+        self, limit: RateLimitItem, key: str
+    ) -> tuple[RateLimitItem, str, bool]:
         return limit, key, await self._limiter.hit(limit, key)
 
-    def _collect_limits(self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]) -> tuple[RateLimitItem, str]:
+    def _collect_limits(
+        self, annotation: LimitAnnotation, request: Request, kwargs: dict[str, Any]
+    ) -> tuple[RateLimitItem, str]:
         key = self._evaluate_key_func(annotation, request, kwargs)
         return [(limit, key) for limit in annotation.limits()]
 
@@ -107,7 +131,7 @@ class RateLimiterPlugin(Plugin):
         return self.__fallback_rate_limiter
 
     async def do_something(
-            self, annotations: list[Annotation], request: Request, **kwargs: Any
+        self, annotations: list[Annotation], request: Request, **kwargs: Any
     ):
         anns = cast(list[LimitAnnotation], annotations)
 
@@ -117,10 +141,14 @@ class RateLimiterPlugin(Plugin):
             limits.extend(self._collect_limits(annotation, request, kwargs))
 
         # Collect rate limit policy
-        policy = ", ".join([f"{limit.amount};w={limit.get_expiry()}" for limit, _ in limits])
+        policy = ", ".join(
+            [f"{limit.amount};w={limit.get_expiry()}" for limit, _ in limits]
+        )
 
         # Check all rate limits concurrently
-        results = await asyncio.gather(*[self._evaluate_limit(limit, key) for limit, key in limits])
+        results = await asyncio.gather(
+            *[self._evaluate_limit(limit, key) for limit, key in limits]
+        )
 
         failed_rate_limit = None
         failed_rate_limit_stats = None
@@ -161,7 +189,9 @@ def limit(expression: str, key: Callable):
 
         if not key_parameters_without_request.issubset(method_parameters):
             raise ValueError(
-                f"Key function `{key.__qualname__}` expects parameters not present in handler `{method.__qualname__}`: {key_parameters_without_request.difference(method_parameters)}"
+                f"Key function `{key.__qualname__}`"
+                "expects parameters not present in handler `{method.__qualname__}`:"
+                "{key_parameters_without_request.difference(method_parameters)}"
             )
 
         add_annotation(method, LimitAnnotation(expression, key, key_parameters))

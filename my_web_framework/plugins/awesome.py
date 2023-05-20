@@ -8,10 +8,10 @@ from my_web_framework.plugins._base import Plugin
 
 class AwesomeAnnotation(Annotation):
     def __str__(self):
-        return f"AwesomeAnnotation()"
+        return "AwesomeAnnotation()"
 
     def __repr__(self):
-        return f"AwesomeAnnotation()"
+        return "AwesomeAnnotation()"
 
 
 class AwesomePlugin(Plugin):

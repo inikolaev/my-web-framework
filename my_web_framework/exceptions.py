@@ -2,7 +2,12 @@ from collections.abc import Mapping
 
 
 class HttpException(Exception):
-    def __init__(self, status_code: int, headers: Mapping[str, str], content: str | bytes | dict | None) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        headers: Mapping[str, str],
+        content: str | bytes | dict | None,
+    ) -> None:
         self.__status_code = status_code
         self.__headers = dict(headers)
         self.__content = content
@@ -18,4 +23,3 @@ class HttpException(Exception):
     @property
     def content(self) -> str | bytes | dict | None:
         return self.__content
-        

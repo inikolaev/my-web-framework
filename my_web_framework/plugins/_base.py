@@ -12,4 +12,4 @@ class Plugin:
     async def do_something(
         self, annotations: list[Annotation], request: Request, **kwargs: Any
     ):
-        print(f"Plugin is being called")
+        print("Plugin is being called")

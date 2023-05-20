@@ -15,6 +15,7 @@ limits = "^3.4.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
+ruff = "^0.0.265"
 
 [build-system]
 requires = ["poetry-core"]
