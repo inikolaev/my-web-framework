@@ -17,8 +17,9 @@ from my_web_framework.plugins.rate_limiter.exceptions import RateLimitExceededEx
 class RateLimiterPlugin(Plugin):
     def __init__(self, storage_uri: str = "async+memory://") -> None:
         if not storage_uri.startswith("async+"):
+            msg = "Only async rate limiter storages are supported"
             raise UnsupportedRateLimiterStorage(
-        "Only async rate limiter storages are supported"
+        msg,
         )
 
         self.__storage = storage_from_string(storage_uri)
@@ -26,14 +27,14 @@ class RateLimiterPlugin(Plugin):
 
         self.__fallback_storage = storage.MemoryStorage()
         self.__fallback_rate_limiter = strategies.MovingWindowRateLimiter(
-            self.__fallback_storage
+            self.__fallback_storage,
         )
 
     def is_supported_annotation(self, annotation: Annotation) -> bool:
         return isinstance(annotation, _LimitAnnotation)
 
     def _evaluate_key_func(
-            self, annotation: _LimitAnnotation, request: Request, kwargs: dict[str, Any]
+            self, annotation: _LimitAnnotation, request: Request, kwargs: dict[str, Any],
     ) -> str:
         kwargs = {
             name: value
@@ -48,13 +49,13 @@ class RateLimiterPlugin(Plugin):
             return key_func(**kwargs)
 
     async def _evaluate_limit(
-            self, limit: RateLimitItem, key: str
+            self, limit: RateLimitItem, key: str,
     ) -> tuple[RateLimitItem, str, bool]:
         return limit, key, await self._limiter.hit(limit, key)
 
     def _collect_limits(
-            self, annotation: _LimitAnnotation, request: Request, kwargs: dict[str, Any]
-    ) -> tuple[RateLimitItem, str]:
+            self, annotation: _LimitAnnotation, request: Request, kwargs: dict[str, Any],
+    ) -> list[tuple[RateLimitItem, str]]:
         key = self._evaluate_key_func(annotation, request, kwargs)
         return [(limit, key) for limit in annotation.limits()]
 
@@ -68,7 +69,7 @@ class RateLimiterPlugin(Plugin):
         return self.__fallback_rate_limiter
 
     async def do_something(
-            self, annotations: list[Annotation], request: Request, **kwargs: Any
+            self, annotations: list[Annotation], request: Request, **kwargs: Any,
     ):
         anns = cast(list[_LimitAnnotation], annotations)
 
@@ -79,12 +80,12 @@ class RateLimiterPlugin(Plugin):
 
         # Collect rate limit policy
         policy = ", ".join(
-            [f"{limit.amount};w={limit.get_expiry()}" for limit, _ in limits]
+            [f"{limit.amount};w={limit.get_expiry()}" for limit, _ in limits],
         )
 
         # Check all rate limits concurrently
         results = await asyncio.gather(
-            *[self._evaluate_limit(limit, key) for limit, key in limits]
+            *[self._evaluate_limit(limit, key) for limit, key in limits],
         )
 
         failed_rate_limit = None
@@ -100,10 +101,9 @@ class RateLimiterPlugin(Plugin):
         if failed_rate_limit:
             reset_time = int(failed_rate_limit_stats.reset_time - time.time()) + 1
             raise RateLimitExceededException(
-        reset_time=reset_time,
-        limit=failed_rate_limit.amount,
-        policy=policy,
-        )
+                reset_time=reset_time,
+                limit=failed_rate_limit.amount,
+                policy=policy,
+            )
 
         print(f"RateLimiterPlugin is being called: {annotations}, {request}, {kwargs}")
-        

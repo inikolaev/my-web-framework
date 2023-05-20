@@ -7,10 +7,10 @@ from my_web_framework.plugins._base import Plugin
 
 
 class AwesomeAnnotation(Annotation):
-    def __str__(self):
+    def __str__(self) -> str:
         return "AwesomeAnnotation()"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "AwesomeAnnotation()"
 
 
@@ -19,7 +19,7 @@ class AwesomePlugin(Plugin):
         return isinstance(annotation, AwesomeAnnotation)
 
     async def do_something(
-        self, annotations: list[Annotation], request: Request, **kwargs: Any
+        self, annotations: list[Annotation], request: Request, **kwargs: Any,
     ):
         print(f"AwesomePlugin is being called: {annotations}, {request}, {kwargs}")
 

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Callable, Mapping
+from collections.abc import Callable, Mapping
 
 from my_web_framework.annotations import Annotation
 from my_web_framework.controller import BaseController, Endpoint
@@ -9,7 +9,7 @@ from my_web_framework.plugins._base import Plugin
 
 class BaseAdapter(ABC):
     def _supported_plugins(
-        self, endpoint: Endpoint, plugins: list[Plugin]
+        self, endpoint: Endpoint, plugins: list[Plugin],
     ) -> Mapping[Plugin, list[Annotation]]:
         supported_plugins: dict[Plugin, list[Annotation]] = defaultdict(list)
 
@@ -24,14 +24,14 @@ class BaseAdapter(ABC):
 
             if not is_supported:
                 print(
-                    f"WARN: No plugin available that supports annotation {annotation}"
+                    f"WARN: No plugin available that supports annotation {annotation}",
                 )
 
         return supported_plugins
 
     @abstractmethod
     def mount_controller(
-        self, controller: BaseController, path: str, plugins: list[Plugin]
+        self, controller: BaseController, path: str, plugins: list[Plugin],
     ) -> None:
         ...
 

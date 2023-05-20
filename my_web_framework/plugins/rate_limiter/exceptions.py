@@ -4,7 +4,7 @@ from my_web_framework.exceptions import HttpException
 
 
 class RateLimitExceededException(HttpException):
-    def __init__(self, reset_time: int, limit: int, policy: str):
+    def __init__(self, reset_time: int, limit: int, policy: str) -> None:
         super().__init__(
             status_code=429,
             headers={
@@ -23,7 +23,7 @@ class RateLimitExceededException(HttpException):
                     "title": "Too many requests",
                     "status": 429,
                     "detail": "Rate-limit policy exceeded",
-                }
+                },
             ),
         )
 

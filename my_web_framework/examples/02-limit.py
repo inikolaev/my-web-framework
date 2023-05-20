@@ -5,7 +5,7 @@ from starlette.requests import Request
 
 from my_web_framework.api import SomeAPI
 from my_web_framework.controller import BaseController, get
-from my_web_framework.plugins.rate_limiter import limit, RateLimiterPlugin
+from my_web_framework.plugins.rate_limiter import RateLimiterPlugin, limit
 
 logger = logging.getLogger()
 

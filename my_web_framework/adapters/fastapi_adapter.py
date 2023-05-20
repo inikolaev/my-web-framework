@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Callable, Mapping
+from collections.abc import Callable, Mapping
 
 from fastapi import APIRouter, FastAPI
 from starlette.requests import Request
@@ -14,13 +14,13 @@ from my_web_framework.plugins._base import Plugin
 
 
 class FastAPIAdapter(BaseAdapter):
-    def __init__(self, title: str, version: str):
+    def __init__(self, title: str, version: str) -> None:
         self.__api = FastAPI(
-            title=title, version=version, openapi_url="/.well-known/schema-discovery"
+            title=title, version=version, openapi_url="/.well-known/schema-discovery",
         )
 
     def _wrap(
-        self, handler: Callable, plugins: Mapping[Plugin, list[Annotation]]
+        self, handler: Callable, plugins: Mapping[Plugin, list[Annotation]],
     ) -> Callable:
         # Check if endpoint handler declared request parameter
         signature = inspect.signature(handler)
@@ -51,14 +51,7 @@ class FastAPIAdapter(BaseAdapter):
             # so we update signature of the endpoint handler to include
             # request object there to convince FastAPI to pass request
             route_handler.__signature__ = signature.replace(
-                parameters=(
-                    inspect.Parameter(
-                        "request",
-                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                        annotation=Request,
-                    ),
-                )
-                + tuple(signature.parameters.values())
+                parameters=(inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request), *tuple(signature.parameters.values())),
             )
 
         return route_handler
@@ -74,24 +67,24 @@ class FastAPIAdapter(BaseAdapter):
         handler = functools.partial(endpoint.handler, controller)
         print(
             "INFO: Mounting controller endpoint at "
-            f"{endpoint.methods} {path}{endpoint.path}"
+            f"{endpoint.methods} {path}{endpoint.path}",
         )
         supported_plugins = self._supported_plugins(endpoint, plugins)
 
         if supported_plugins:
             print(
                 "INFO: The following plugins apply to the endpoint: "
-                f"{supported_plugins}"
+                f"{supported_plugins}",
             )
 
         route_handler = self._wrap(handler, supported_plugins)
 
         router.add_api_route(
-            path=endpoint.path, endpoint=route_handler, methods=endpoint.methods
+            path=endpoint.path, endpoint=route_handler, methods=endpoint.methods,
         )
 
     def _create_router(
-        self, controller: BaseController, path: str, plugins: list[Plugin]
+        self, controller: BaseController, path: str, plugins: list[Plugin],
     ) -> APIRouter:
         # Some magic to mount a route and apply limiter to the route
         router = APIRouter()
@@ -104,7 +97,7 @@ class FastAPIAdapter(BaseAdapter):
         return router
 
     def mount_controller(
-        self, controller: BaseController, path: str, plugins: list[Plugin]
+        self, controller: BaseController, path: str, plugins: list[Plugin],
     ) -> None:
         router = self._create_router(controller, path, plugins)
         self.__api.include_router(router, prefix=path)

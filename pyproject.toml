@@ -20,3 +20,38 @@ ruff = "^0.0.265"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+# https://beta.ruff.rs/docs/settings/#select
+select = ["ALL"]
+# https://beta.ruff.rs/docs/settings/#show-fixes
+show-fixes = true
+# https://beta.ruff.rs/docs/settings/#line-length
+line-length = 119
+# https://beta.ruff.rs/docs/settings/#target-version
+target-version = "py310"
+# https://beta.ruff.rs/docs/settings/#exclude
+exclude = [
+    ".bzr",
+    ".data",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+ignore = ["ANN101", "D"]

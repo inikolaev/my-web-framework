@@ -7,20 +7,20 @@ from my_web_framework.annotations import Annotation, add_annotation
 
 
 class _LimitAnnotation(Annotation):
-    def __init__(self, expression: str, key: Callable, parameters: set[str]):
+    def __init__(self, expression: str, key: Callable, parameters: set[str]) -> None:
         self.__expression = expression
         self.__limits = parse_many(expression)
         self.__key = key
         self.__parameters = frozenset(parameters.copy())
         self.__has_request_parameter = "request" in self.__parameters
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
     f"LimitAnnotation(expression={self.__expression},"
     f" parameters={self.__parameters})"
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
     f"LimitAnnotation(expression={self.__expression},"
     f" parameters={self.__parameters})"
@@ -37,7 +37,7 @@ class _LimitAnnotation(Annotation):
 
     def limits(self) -> list[RateLimitItem]:
         return self.__limits
-    
+
 
 def limit(expression: str, key: Callable):
     def marker(method: Callable) -> Callable:
@@ -56,10 +56,9 @@ def limit(expression: str, key: Callable):
         }
 
         if not key_parameters_without_request.issubset(method_parameters):
+            msg = f"Key function `{key.__qualname__}`expects parameters not present in handler `{{method.__qualname__}}`:{{key_parameters_without_request.difference(method_parameters)}}"
             raise ValueError(
-        f"Key function `{key.__qualname__}`"
-        "expects parameters not present in handler `{method.__qualname__}`:"
-        "{key_parameters_without_request.difference(method_parameters)}"
+        msg,
         )
 
         add_annotation(method, _LimitAnnotation(expression, key, key_parameters))
